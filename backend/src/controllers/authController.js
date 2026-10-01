@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const Customer = require('../models/customer');
 const AppError = require('../utils/AppError');
+const jwt = require('jsonwebtoken');
 
 // POST /api/auth/register
 const register = async (req, res, next) => {
@@ -51,4 +52,43 @@ const register = async (req, res, next) => {
   }
 };
 
-module.exports = { register };
+// POST /api/auth/login
+const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+      throw new AppError('Email and password are required', 400);
+    }
+
+    // password is hidden by default in the model, so we ask for it explicitly
+    const customer = await Customer.findOne({
+      email: email.toLowerCase().trim(),
+    }).select('+password');
+
+    // Same message for "no such email" and "wrong password" (do not reveal which)
+    const isMatch = customer && (await bcrypt.compare(password, customer.password));
+    if (!isMatch) {
+      throw new AppError('Invalid email or password', 401);
+    }
+
+    const token = jwt.sign({ id: customer._id }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || '1d',
+    });
+
+    res.json({
+      message: 'Login successful',
+      token,
+      customer: {
+        id: customer._id,
+        name: customer.name,
+        email: customer.email,
+        mobile: customer.mobile,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login };
