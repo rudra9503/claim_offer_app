@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 const Offer = require('../models/offer');
-require('../models/merchant'); 
+require('../models/merchant'); // registers the Merchant model so populate('merchant') works
 const getOfferState = require('../utils/offerState');
+const AppError = require('../utils/AppError');
 
 // Adds fields that are calculated on the fly (not stored in the database)
 const addComputedFields = (offer) => {
@@ -18,7 +19,7 @@ const addComputedFields = (offer) => {
 };
 
 // GET /api/offers
-const getOffers = async (req, res) => {
+const getOffers = async (req, res, next) => {
   try {
     const offers = await Offer.find()
       .populate('merchant', 'storeName location')
@@ -26,20 +27,18 @@ const getOffers = async (req, res) => {
 
     res.json(offers.map(addComputedFields));
   } catch (error) {
-   
-    res.status(500).json({ message: 'Failed to fetch offers' });
-   
+    next(error);
   }
 };
 
 // GET /api/offers/:id
-const getOfferById = async (req, res) => {
+const getOfferById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
     // A malformed id would crash findById, so treat it as "not found"
     if (!mongoose.isValidObjectId(id)) {
-      return res.status(404).json({ message: 'Offer not found' });
+      throw new AppError('Offer not found', 404);
     }
 
     const offer = await Offer.findById(id)
@@ -47,12 +46,12 @@ const getOfferById = async (req, res) => {
       .lean();
 
     if (!offer) {
-      return res.status(404).json({ message: 'Offer not found' });
+      throw new AppError('Offer not found', 404);
     }
 
     res.json(addComputedFields(offer));
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch offer' });
+    next(error);
   }
 };
 
