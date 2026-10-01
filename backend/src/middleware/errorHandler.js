@@ -30,6 +30,12 @@ const errorHandler = (err, req, res, next) => {
     message = 'Invalid JSON in request body';
   }
 
+   // Bad, tampered or expired JWT
+  if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+    statusCode = 401;
+    message = 'Invalid or expired token. Please log in again.';
+  }
+
   // Unknown problems: log the details, but do not leak them to the client
   if (statusCode === 500) {
     console.error(err);

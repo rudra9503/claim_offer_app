@@ -91,4 +91,11 @@ const login = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login };
+// GET /api/auth/me  (protected)
+const getMe = (req, res) => {
+  const { _id, name, email, mobile } = req.customer;
+  res.json({ customer: { id: _id, name, email, mobile } });
+};
+
+module.exports = { register, login, getMe };
+
