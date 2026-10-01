@@ -1,7 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Merchant = require('./models/Merchant');
-const Offer = require('./models/Offer');
+const Merchant = require('../models/Merchant');
+const Offer = require('../models/Offer');
 const Claim = require('./models/Claim');
 
 // Returns a date N days from now (negative = in the past)
