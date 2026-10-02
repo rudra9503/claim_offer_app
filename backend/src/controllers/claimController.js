@@ -4,6 +4,8 @@ const Claim = require('../models/claim');
 const getOfferState = require('../utils/offerState');
 const generateClaimCode = require('../utils/generateClaimCode');
 const AppError = require('../utils/AppError');
+require('../models/merchant'); 
+const getClaimStatus = require('../utils/claimStatus');
 
 // Why a claim is not allowed, for each offer state
 const notClaimableMessages = {
@@ -100,4 +102,62 @@ const claimOffer = async (req, res, next) => {
   }
 };
 
-module.exports = { claimOffer };
+// Shapes one claim for the client (offer and merchant must be populated)
+const formatClaim = (claim) => ({
+  id: claim._id,
+  claimCode: claim.claimCode,
+  status: getClaimStatus(claim, claim.offer),
+  claimDate: claim.claimDate,
+  redeemedDate: claim.redeemedDate,
+  offer: {
+    id: claim.offer._id,
+    title: claim.offer.title,
+    image: claim.offer.image,
+    expiryDate: claim.offer.expiryDate,
+  },
+  merchant: claim.offer.merchant,
+});
+
+// GET /api/my-claims  (protected)
+const getMyClaims = async (req, res, next) => {
+  try {
+    const claims = await Claim.find({ customer: req.customer._id })
+      .populate({
+        path: 'offer',
+        select: 'title image expiryDate merchant',
+        populate: { path: 'merchant', select: 'storeName location' },
+      })
+      .sort({ claimDate: -1 })
+      .lean();
+
+    res.json(claims.map(formatClaim));
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/claims/:claimCode
+const getClaimByCode = async (req, res, next) => {
+  try {
+    const claimCode = req.params.claimCode.toUpperCase().trim();
+
+    const claim = await Claim.findOne({ claimCode })
+      .populate('customer', 'name')
+      .populate({
+        path: 'offer',
+        select: 'title image expiryDate merchant',
+        populate: { path: 'merchant', select: 'storeName location' },
+      })
+      .lean();
+
+    if (!claim) {
+      throw new AppError('Invalid claim code', 404);
+    }
+
+    res.json({ claim: { ...formatClaim(claim), customerName: claim.customer.name } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { claimOffer, getMyClaims, getClaimByCode };
