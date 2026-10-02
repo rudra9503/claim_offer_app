@@ -160,4 +160,55 @@ const getClaimByCode = async (req, res, next) => {
   }
 };
 
-module.exports = { claimOffer, getMyClaims, getClaimByCode };
+// POST /api/claims/:claimCode/redeem
+const redeemClaim = async (req, res, next) => {
+  try {
+    const claimCode = req.params.claimCode.toUpperCase().trim();
+    const { offerId } = req.body || {};
+
+    // 1. Claim code exists
+    const claim = await Claim.findOne({ claimCode }).populate('offer', 'title expiryDate');
+    if (!claim) {
+      throw new AppError('Invalid claim code', 404);
+    }
+
+    // 2. Claim belongs to the relevant offer (only checked if the client sent offerId)
+    if (offerId && String(claim.offer._id) !== String(offerId)) {
+      throw new AppError('This claim does not belong to the given offer', 400);
+    }
+
+    // 3 + 4. Not already redeemed, and the offer has not expired
+    const status = getClaimStatus(claim, claim.offer);
+    if (status === 'Redeemed') {
+      throw new AppError('This claim has already been redeemed', 409);
+    }
+    if (status === 'Expired') {
+      throw new AppError('This claim has expired because the offer has expired', 400);
+    }
+
+    // 5. Redeem: only succeeds if the claim is still "Claimed" at this moment
+    const redeemed = await Claim.findOneAndUpdate(
+      { _id: claim._id, status: 'Claimed' },
+      { status: 'Redeemed', redeemedDate: new Date() },
+      { new: true }
+    );
+    if (!redeemed) {
+      throw new AppError('This claim has already been redeemed', 409);
+    }
+
+    res.json({
+      message: 'Claim redeemed successfully',
+      claim: {
+        id: redeemed._id,
+        claimCode: redeemed.claimCode,
+        status: redeemed.status,
+        redeemedDate: redeemed.redeemedDate,
+        offer: { id: claim.offer._id, title: claim.offer.title },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { claimOffer, getMyClaims, getClaimByCode, redeemClaim };
