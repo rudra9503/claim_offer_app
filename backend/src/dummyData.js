@@ -2,7 +2,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const Merchant = require('../models/Merchant');
 const Offer = require('../models/Offer');
-const Claim = require('./models/Claim');
+const Claim = require('../models/Claim');
 
 // Returns a date N days from now (negative = in the past)
 const daysFromNow = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
