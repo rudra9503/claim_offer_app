@@ -1,13 +1,22 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { apiRequest } from "../api";
+import { useAuth } from "../context/AuthContext";
 import { getDiscountPercent, formatDate, isExpired } from "../utils/offerHelpers";
 
 function OfferDetails() {
   const { id } = useParams();
+  const { isLoggedIn, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [offer, setOffer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [claiming, setClaiming] = useState(false);
+  const [claimCode, setClaimCode] = useState("");
+  const [claimError, setClaimError] = useState("");
 
   useEffect(() => {
     async function loadOffer() {
@@ -23,6 +32,35 @@ function OfferDetails() {
     loadOffer();
   }, [id]);
 
+  async function handleClaimClick() {
+    // Not logged in: go to login, then come back here
+    if (!isLoggedIn) {
+      navigate("/login", { state: { from: location.pathname } });
+      return;
+    }
+
+    setClaimError("");
+    setClaimCode("");
+    setClaiming(true);
+    try {
+      const data = await apiRequest(`/offers/${id}/claim`, { method: "POST" });
+      // ASSUMPTION: the code is in data.claim.claimCode or data.claimCode
+      setClaimCode(data.claim?.claimCode || data.claimCode);
+
+      // Re-fetch the offer so the available quantity updates
+      const updated = await apiRequest(`/offers/${id}`);
+      setOffer(updated);
+    } catch (err) {
+      setClaimError(err.message);
+      // Token expired or invalid: clear it so the user can log in again
+      if (/token|unauthorized|not authorized/i.test(err.message)) {
+        logout();
+      }
+    } finally {
+      setClaiming(false);
+    }
+  }
+
   if (loading) return <p className="p-4">Loading offer...</p>;
   if (error) {
     return (
@@ -37,7 +75,15 @@ function OfferDetails() {
 
   const expired = isExpired(offer.expiryDate);
   const soldOut = offer.availableQuantity !== undefined && offer.availableQuantity <= 0;
-  const canClaim = !expired && !soldOut;
+  const alreadyClaimedNow = !!claimCode;
+  const canClaim = !expired && !soldOut && !claiming && !alreadyClaimedNow;
+
+  let buttonText = "Claim Offer";
+  if (expired) buttonText = "Offer Expired";
+  else if (alreadyClaimedNow) buttonText = "Claimed";
+  else if (soldOut) buttonText = "Sold Out";
+  else if (claiming) buttonText = "Claiming...";
+  else if (!isLoggedIn) buttonText = "Login to Claim";
 
   return (
     <div className="mx-auto max-w-3xl p-4">
@@ -92,7 +138,7 @@ function OfferDetails() {
               This offer has expired and can no longer be claimed.
             </p>
           )}
-          {!expired && soldOut && (
+          {!expired && soldOut && !alreadyClaimedNow && (
             <p className="rounded bg-yellow-50 p-3 font-medium text-yellow-800">
               This offer is sold out.
             </p>
@@ -105,11 +151,29 @@ function OfferDetails() {
             </div>
           )}
 
+          {claimError && (
+            <p className="rounded bg-red-50 p-3 text-sm font-medium text-red-700">
+              {claimError}
+            </p>
+          )}
+
+          {claimCode && (
+            <div className="rounded border border-green-200 bg-green-50 p-4">
+              <p className="font-medium text-green-800">Offer claimed successfully!</p>
+              <p className="mt-1 text-sm text-gray-600">Your claim code:</p>
+              <p className="text-2xl font-bold tracking-wider text-green-700">{claimCode}</p>
+              <Link to="/my-claims" className="mt-2 inline-block text-sm text-blue-600 hover:underline">
+                View my claims →
+              </Link>
+            </div>
+          )}
+
           <button
+            onClick={handleClaimClick}
             disabled={!canClaim}
             className="w-full rounded bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:hover:bg-gray-300"
           >
-            {expired ? "Offer Expired" : soldOut ? "Sold Out" : "Claim Offer"}
+            {buttonText}
           </button>
         </div>
       </div>
