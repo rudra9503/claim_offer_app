@@ -17,6 +17,7 @@ function OfferDetails() {
   const [claiming, setClaiming] = useState(false);
   const [claimCode, setClaimCode] = useState("");
   const [claimError, setClaimError] = useState("");
+  const [alreadyClaimed, setAlreadyClaimed] = useState(false);
 
   useEffect(() => {
     async function loadOffer() {
@@ -84,6 +85,7 @@ function OfferDetails() {
   else if (soldOut) buttonText = "Sold Out";
   else if (claiming) buttonText = "Claiming...";
   else if (!isLoggedIn) buttonText = "Login to Claim";
+  else if (alreadyClaimed) buttonText = "Already Claimed";
 
   return (
     <div className="mx-auto max-w-3xl p-4">

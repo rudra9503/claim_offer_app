@@ -6,6 +6,7 @@ import OfferDetails from "./pages/OfferDetails";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import MyClaims from "./pages/MyClaims";
+import NotFound from "./pages/NotFound";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/" element={<Navigate to="/offers" />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

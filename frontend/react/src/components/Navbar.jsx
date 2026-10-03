@@ -21,7 +21,7 @@ function Navbar() {
           {isLoggedIn ? (
             <>
               <Link to="/my-claims" className="hover:underline">My Claims</Link>
-              <span className="text-gray-500">Hi, {user?.name}</span>
+             <span className="hidden text-gray-500 sm:inline">Hi, {user?.name}</span>
               <button
                 onClick={handleLogout}
                 className="rounded border border-gray-300 px-3 py-1 hover:bg-gray-100"

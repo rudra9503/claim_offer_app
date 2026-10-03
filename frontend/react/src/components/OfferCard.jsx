@@ -3,6 +3,7 @@ import { getDiscountPercent, formatDate, isExpired } from "../utils/offerHelpers
 
 function OfferCard({ offer }) {
   const expired = isExpired(offer.expiryDate);
+  const soldOut = offer.availableQuantity !== undefined && offer.availableQuantity <= 0;
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -27,15 +28,22 @@ function OfferCard({ offer }) {
           </span>
         </div>
 
+        {/* <p className={`text-sm ${expired ? "font-medium text-red-600" : "text-gray-500"}`}>
+          {expired ? "Expired" : `Valid till ${formatDate(offer.expiryDate)}`}
+        </p> */}
+
         <p className={`text-sm ${expired ? "font-medium text-red-600" : "text-gray-500"}`}>
           {expired ? "Expired" : `Valid till ${formatDate(offer.expiryDate)}`}
         </p>
+        {!expired && soldOut && (
+        <p className="text-sm font-medium text-yellow-700">Sold out</p>
+        )}
 
         <Link
           to={`/offers/${offer._id}`}
           className="mt-auto block rounded bg-blue-600 px-4 py-2 text-center text-white hover:bg-blue-700"
         >
-          View Offer
+          View Offer 
         </Link>
       </div>
     </div>
