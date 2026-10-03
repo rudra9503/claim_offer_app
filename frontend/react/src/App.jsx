@@ -5,6 +5,7 @@ import OfferList from "./pages/OffersList";
 import OfferDetails from "./pages/OfferDetails";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import MyClaims from "./pages/MyClaims";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
       <AuthProvider>
         <Navbar />
         <Routes>
+          <Route path="/my-claims" element={<MyClaims />} />
           <Route path="/offers" element={<OfferList />} />
           <Route path="/offers/:id" element={<OfferDetails />} />
           <Route path="/login" element={<Login />} />
