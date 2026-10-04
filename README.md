@@ -162,3 +162,46 @@ claim, malformed ids) return meaningful JSON errors without crashing the server.
 
 ## Possible Improvements
 Search and filters, pagination, rate limiting, automated tests, merchant login, geo-queries.
+
+
+## Mobile App (React Native)
+
+The customer app is built with React Native (Expo) and uses the same backend as the web client.
+
+### Tech
+| Item | Technology |
+|---|---|
+| Framework | React Native with Expo (SDK 57), JavaScript |
+| Navigation | React Navigation (native stack + bottom tabs) |
+| Auth storage | `expo-secure-store` (encrypted keychain/keystore) |
+| State | React Context (`AuthContext`) |
+
+### Screens
+Offer List, Offer Details, Login, Register, My Claims.
+
+### Run the mobile app
+Prerequisites: Node.js 18+, the **Expo Go** app on your phone, and the backend running.
+Phone and computer must be on the **same Wi-Fi**.
+
+```bash
+cd mobile/mobile              # <<VERIFY: use "cd mobile" if you flattened the folder>>
+npm install
+```
+
+1. Find your computer's LAN IP (macOS: `ipconfig getifaddr en0`).
+2. Open `src/config.js` and set:
+   `export const API_URL = "http://<YOUR_IP>:5001/api";`
+3. Start Expo and scan the QR code with Expo Go:
+```bash
+npx expo start
+```
+`localhost` does not work on a phone, because it points to the phone itself.
+If the QR scan cannot connect, use `npx expo start --tunnel`.
+
+### Mobile design notes
+- The JWT is stored in `expo-secure-store`, which is safer than browser `localStorage`.
+- The session is restored on app start, so users stay logged in.
+- Tab screens reload on focus, so claim quantities and statuses are always current.
+- A 401 response clears the saved token and returns the user to the logged-out state.
+- Requests time out after 10 seconds, so the app never spins forever.
+- The backend is unchanged. CORS does not apply to native apps.
