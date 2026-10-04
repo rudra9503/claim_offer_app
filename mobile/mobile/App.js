@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { StyleSheet, Text, View, ScrollView, ActivityIndicator } from "react-native";
-import { API_URL } from "./src/config";
+import { apiRequest } from "./src/api";
 
 export default function App() {
   const [offers, setOffers] = useState([]);
@@ -10,11 +10,7 @@ export default function App() {
   useEffect(() => {
     async function loadOffers() {
       try {
-        const response = await fetch(`${API_URL}/offers`);
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.message || "Something went wrong");
-        }
+        const data = await apiRequest("/offers");
         setOffers(data);
       } catch (err) {
         setError(err.message);
