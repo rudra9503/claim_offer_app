@@ -1,14 +1,21 @@
 import { useState, useEffect } from "react";
 import { View, Text, Image, ScrollView, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { apiRequest } from "../api";
+import { useAuth } from "../context/AuthContext";
 import { getDiscountPercent, formatDate, isExpired } from "../utils/offerHelpers";
 
-export default function OfferDetails({ route }) {
+export default function OfferDetails({ route, navigation }) {
   const { id } = route.params;
+  const { isLoggedIn, logout } = useAuth();
 
   const [offer, setOffer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [claiming, setClaiming] = useState(false);
+  const [claimCode, setClaimCode] = useState("");
+  const [claimError, setClaimError] = useState("");
+  const [alreadyClaimed, setAlreadyClaimed] = useState(false);
 
   useEffect(() => {
     async function loadOffer() {
@@ -23,6 +30,42 @@ export default function OfferDetails({ route }) {
     }
     loadOffer();
   }, [id]);
+
+  async function handleClaim() {
+    // Not logged in: go to Login, which returns here afterwards
+    if (!isLoggedIn) {
+      navigation.navigate("Login");
+      return;
+    }
+
+    setClaimError("");
+    setClaimCode("");
+    setClaiming(true);
+    try {
+      const data = await apiRequest(`/offers/${id}/claim`, { method: "POST" });
+      // Same assumption as the web app: code is in data.claim.claimCode or data.claimCode
+      setClaimCode(data.claim?.claimCode || data.claimCode || "");
+
+      // Refresh the offer so the available quantity updates
+      try {
+        const updated = await apiRequest(`/offers/${id}`);
+        setOffer(updated);
+      } catch {
+        // the claim already succeeded, so ignore a refresh failure
+      }
+    } catch (err) {
+      setClaimError(err.message);
+      if (err.status === 409 || /already/i.test(err.message)) {
+        setAlreadyClaimed(true);
+      }
+      if (err.status === 401) {
+        // Token missing or expired: clear it so the user can log in again
+        await logout();
+      }
+    } finally {
+      setClaiming(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -42,11 +85,16 @@ export default function OfferDetails({ route }) {
 
   const expired = isExpired(offer.expiryDate);
   const soldOut = offer.availableQuantity !== undefined && offer.availableQuantity <= 0;
-  const canClaim = !expired && !soldOut;
+  const claimedNow = claimCode !== "";
+  const canClaim = !expired && !soldOut && !claiming && !claimedNow && !alreadyClaimed;
 
   let buttonText = "Claim Offer";
   if (expired) buttonText = "Offer Expired";
+  else if (claimedNow) buttonText = "Claimed";
+  else if (alreadyClaimed) buttonText = "Already Claimed";
   else if (soldOut) buttonText = "Sold Out";
+  else if (claiming) buttonText = "Claiming...";
+  else if (!isLoggedIn) buttonText = "Login to Claim";
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -86,7 +134,7 @@ export default function OfferDetails({ route }) {
             This offer has expired and can no longer be claimed.
           </Text>
         )}
-        {!expired && soldOut && (
+        {!expired && soldOut && !claimedNow && (
           <Text style={styles.soldOutBox}>This offer is sold out.</Text>
         )}
 
@@ -97,7 +145,21 @@ export default function OfferDetails({ route }) {
           </View>
         ) : null}
 
+        {claimError ? <Text style={styles.claimErrorBox}>{claimError}</Text> : null}
+
+        {claimedNow ? (
+          <View style={styles.successBox}>
+            <Text style={styles.successTitle}>Offer claimed successfully!</Text>
+            <Text style={styles.successLabel}>Your claim code:</Text>
+            <Text style={styles.code}>{claimCode}</Text>
+            <Pressable onPress={() => navigation.navigate("Tabs", { screen: "MyClaims" })}>
+              <Text style={styles.link}>View my claims →</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         <Pressable
+          onPress={handleClaim}
           disabled={!canClaim}
           style={[styles.button, !canClaim && styles.buttonDisabled]}
         >
@@ -137,6 +199,18 @@ const styles = StyleSheet.create({
   terms: { marginTop: 8 },
   sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 4 },
   termsText: { fontSize: 13, color: "#4b5563" },
+  claimErrorBox: {
+    backgroundColor: "#fef2f2", color: "#b91c1c", padding: 12,
+    borderRadius: 6, fontSize: 14, fontWeight: "600",
+  },
+  successBox: {
+    backgroundColor: "#f0fdf4", borderColor: "#bbf7d0", borderWidth: 1,
+    borderRadius: 6, padding: 14, gap: 4,
+  },
+  successTitle: { color: "#166534", fontWeight: "600" },
+  successLabel: { color: "#4b5563", fontSize: 13 },
+  code: { fontSize: 26, fontWeight: "bold", letterSpacing: 2, color: "#15803d" },
+  link: { color: "#2563eb", marginTop: 6 },
   button: { backgroundColor: "#2563eb", borderRadius: 6, paddingVertical: 14, marginTop: 16 },
   buttonDisabled: { backgroundColor: "#d1d5db" },
   buttonText: { color: "#fff", textAlign: "center", fontSize: 16, fontWeight: "600" },
