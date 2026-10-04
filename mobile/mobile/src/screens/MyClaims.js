@@ -87,7 +87,8 @@ export default function MyClaims({ navigation }) {
   return (
     <FlatList
       data={claims}
-      keyExtractor={(item) => item._id}
+    //   keyExtractor={(item) => item._id}
+    keyExtractor={(item) => item._id || item.id || item.claimCode}
       contentContainerStyle={styles.list}
       refreshing={refreshing}
       onRefresh={handleRefresh}
