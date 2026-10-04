@@ -1,5 +1,5 @@
-import OfferList from "./src/screens/OfferList";
+import AppNavigator from "./src/navigation/AppNavigator";
 
 export default function App() {
-  return <OfferList />;
+  return <AppNavigator />;
 }

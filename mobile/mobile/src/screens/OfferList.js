@@ -3,7 +3,7 @@ import { View, Text, FlatList, ActivityIndicator, StyleSheet } from "react-nativ
 import { apiRequest } from "../api";
 import OfferCard from "../components/OfferCard";
 
-export default function OfferList() {
+export default function OfferList({navigation}) {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -42,9 +42,11 @@ export default function OfferList() {
     <FlatList
       data={offers}
       keyExtractor={(item) => item._id}
-      renderItem={({ item }) => <OfferCard offer={item} />}
+    //   renderItem={({ item }) => <OfferCard offer={item} />}
+    renderItem={({ item }) => (
+        <OfferCard offer={item} onPress={() => navigation.navigate("OfferDetails", { id: item._id })}/>
+)}
       contentContainerStyle={styles.list}
-      ListHeaderComponent={<Text style={styles.heading}>Nearby Offers</Text>}
       ListEmptyComponent={<Text style={styles.muted}>No offers available.</Text>}
     />
   );
@@ -52,7 +54,7 @@ export default function OfferList() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-  list: { padding: 16, paddingTop: 60 },
+  list: { padding: 16 },
   heading: { fontSize: 24, fontWeight: "bold", marginBottom: 16 },
   muted: { color: "#6b7280" },
   error: { color: "#dc2626", textAlign: "center" },
